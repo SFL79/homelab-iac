@@ -1,0 +1,268 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: homepage
+  namespace: homepage
+  labels:
+    app.kubernetes.io/name: homepage
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: homepage
+  namespace: homepage
+  labels:
+    app.kubernetes.io/name: homepage
+data:
+  kubernetes.yaml: |
+    mode: cluster
+    ingress: true
+    traefik: true
+  settings.yaml: |
+    title: Homelab
+    description: One place for every service
+    target: _blank
+    theme: dark
+    color: slate
+    headerStyle: clean
+    cardBlur: md
+    background:
+      image: /images/homelab-constellation.svg
+      opacity: 85
+    useEqualHeights: true
+    hideVersion: true
+    statusStyle: dot
+    layout:
+      Media:
+        style: row
+        columns: 5
+      AI:
+        style: row
+        columns: 4
+      Operations:
+        style: row
+        columns: 5
+      Platform:
+        style: row
+        columns: 4
+  services.yaml: "[]"
+  bookmarks.yaml: "[]"
+  widgets.yaml: "[]"
+  docker.yaml: ""
+  proxmox.yaml: ""
+  custom.css: |
+    .service-card,
+    .widget-container {
+      background: linear-gradient(135deg, rgba(33, 22, 31, 0.82), rgba(18, 19, 22, 0.72)) !important;
+      border: 1px solid rgba(251, 113, 133, 0.15) !important;
+      box-shadow: 0 14px 38px rgba(4, 2, 5, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.035) !important;
+      backdrop-filter: blur(14px) saturate(120%);
+      -webkit-backdrop-filter: blur(14px) saturate(120%);
+      transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+    }
+
+    .service-card:hover {
+      border-color: rgba(251, 113, 133, 0.48) !important;
+      box-shadow: 0 18px 46px rgba(5, 2, 6, 0.46), 0 0 24px rgba(244, 63, 94, 0.10) !important;
+      transform: translateY(-3px) scale(1.01);
+    }
+
+    .service-name {
+      letter-spacing: 0.015em;
+    }
+
+    .service-card img {
+      filter: drop-shadow(0 7px 12px rgba(0, 0, 0, 0.32));
+    }
+  custom.js: ""
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: homepage
+  labels:
+    app.kubernetes.io/name: homepage
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - namespaces
+    verbs:
+      - get
+      - list
+  - apiGroups:
+      - networking.k8s.io
+    resources:
+      - ingresses
+    verbs:
+      - get
+      - list
+  - apiGroups:
+      - traefik.io
+    resources:
+      - ingressroutes
+    verbs:
+      - get
+      - list
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: homepage
+  labels:
+    app.kubernetes.io/name: homepage
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: homepage
+subjects:
+  - kind: ServiceAccount
+    name: homepage
+    namespace: homepage
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: homepage
+  namespace: homepage
+  labels:
+    app.kubernetes.io/name: homepage
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: homepage
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: homepage
+    spec:
+      serviceAccountName: homepage
+      automountServiceAccountToken: true
+      dnsConfig:
+        options:
+          - name: ndots
+            value: "1"
+      containers:
+        - name: homepage
+          image: ghcr.io/gethomepage/homepage:v2.0.0
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: MY_POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: HOMEPAGE_ALLOWED_HOSTS
+              value: "$(MY_POD_IP):3000,home.sfl"
+            - name: LOG_TARGETS
+              value: stdout
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /api/healthcheck
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /api/healthcheck
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 25m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - name: config
+              mountPath: /app/config/kubernetes.yaml
+              subPath: kubernetes.yaml
+            - name: config
+              mountPath: /app/config/settings.yaml
+              subPath: settings.yaml
+            - name: config
+              mountPath: /app/config/services.yaml
+              subPath: services.yaml
+            - name: config
+              mountPath: /app/config/bookmarks.yaml
+              subPath: bookmarks.yaml
+            - name: config
+              mountPath: /app/config/widgets.yaml
+              subPath: widgets.yaml
+            - name: config
+              mountPath: /app/config/docker.yaml
+              subPath: docker.yaml
+            - name: config
+              mountPath: /app/config/proxmox.yaml
+              subPath: proxmox.yaml
+            - name: config
+              mountPath: /app/config/custom.css
+              subPath: custom.css
+            - name: config
+              mountPath: /app/config/custom.js
+              subPath: custom.js
+            - name: background
+              mountPath: /app/public/images/homelab-constellation.svg
+              subPath: homelab-constellation.svg
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: homepage
+        - name: background
+          configMap:
+            name: homepage-background
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: homepage
+  namespace: homepage
+  labels:
+    app.kubernetes.io/name: homepage
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: homepage
+  ports:
+    - name: http
+      port: 3000
+      targetPort: http
+      protocol: TCP
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: homepage
+  namespace: homepage
+  annotations:
+    # The catalog does not need a card linking to itself.
+    gethomepage.dev/enabled: "false"
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`home.sfl`)
+      kind: Rule
+      services:
+        - name: homepage
+          port: 3000

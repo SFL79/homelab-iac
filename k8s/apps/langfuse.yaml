@@ -1,0 +1,118 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: langfuse
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  finalizers:
+    - resources-finalizer.argocd.io
+spec:
+  project: default
+  source:
+    repoURL: https://langfuse.github.io/langfuse-k8s
+    chart: langfuse
+    # Stay on the v1 chart until the documented v1 -> v2 data-store migration is planned.
+    targetRevision: "1.5.41"
+    helm:
+      releaseName: langfuse
+      valuesObject:
+        langfuse:
+          nextauth:
+            url: http://langfuse.sfl
+            # NEXTAUTH_SECRET from langfuse-secrets k8s Secret (materialized by ExternalSecret)
+            secret:
+              secretKeyRef:
+                name: langfuse-secrets
+                key: NEXTAUTH_SECRET
+          # SALT and ENCRYPTION_KEY follow the same secretKeyRef pattern the chart expects
+          salt:
+            secretKeyRef:
+              name: langfuse-secrets
+              key: SALT
+          encryptionKey:
+            secretKeyRef:
+              name: langfuse-secrets
+              key: ENCRYPTION_KEY
+          telemetryEnabled: false
+
+        postgresql:
+          deploy: true
+          auth:
+            username: langfuse
+            database: langfuse
+            existingSecret: langfuse-secrets
+            secretKeys:
+              adminPasswordKey: postgres-password
+              userPasswordKey: postgres-password
+          primary:
+            persistence:
+              storageClass: fast-local
+              size: 10Gi
+
+        clickhouse:
+          deploy: true
+          auth:
+            existingSecret: langfuse-secrets
+            existingSecretKey: clickhouse-password
+          # Homelab: single node, no HA. Chart default is 3 replicas with ZooKeeper.
+          # For production/enterprise: remove these overrides and use chart defaults.
+          replicaCount: 1
+          resources:
+            requests:
+              cpu: 500m
+              memory: 2Gi
+            limits:
+              cpu: "2"
+              memory: 4Gi
+          zookeeper:
+            enabled: false
+          persistence:
+            storageClass: fast-local
+            size: 100Gi
+
+        redis:
+          deploy: true
+          auth:
+            existingSecret: langfuse-secrets
+            existingSecretPasswordKey: redis-password
+          master:
+            persistence:
+              storageClass: fast-local
+              size: 2Gi
+
+        # MinIO provides S3-compatible blob storage for Langfuse trace payloads.
+        # Vault-backed ExternalSecret materializes langfuse-s3; MinIO and the
+        # Langfuse app both read that same Secret to prevent credential drift.
+        s3:
+          deploy: true
+          auth:
+            existingSecret: langfuse-s3
+            rootUserSecretKey: root-user
+            rootPasswordSecretKey: root-password
+          persistence:
+            storageClass: fast-local
+            size: 10Gi
+          accessKeyId:
+            secretKeyRef:
+              name: langfuse-s3
+              key: root-user
+          secretAccessKey:
+            secretKeyRef:
+              name: langfuse-s3
+              key: root-password
+
+        # Ingress is handled by a Traefik IngressRoute in langfuse-config (not Helm-managed),
+        # matching the pattern used by the rest of this homelab.
+        ingress:
+          enabled: false
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: langfuse
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

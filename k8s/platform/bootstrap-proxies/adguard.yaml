@@ -1,0 +1,50 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: adguard
+  namespace: bootstrap-proxies
+spec:
+  ports:
+    - port: 8089
+      targetPort: 8089
+      protocol: TCP
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: adguard
+  namespace: bootstrap-proxies
+  labels:
+    kubernetes.io/service-name: adguard
+addressType: IPv4
+endpoints:
+  - addresses:
+      - 192.168.1.118
+ports:
+  - port: 8089
+    protocol: TCP
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: adguard
+  namespace: bootstrap-proxies
+  annotations:
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/name: AdGuard Home
+    gethomepage.dev/description: Homelab DNS and filtering
+    gethomepage.dev/group: Platform
+    gethomepage.dev/icon: adguard-home.png
+    gethomepage.dev/href: http://adguard.sfl
+    gethomepage.dev/siteMonitor: http://adguard.sfl
+    gethomepage.dev/external: "true"
+    gethomepage.dev/weight: "40"
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`adguard.sfl`)
+      kind: Rule
+      services:
+        - name: adguard
+          port: 8089

@@ -1,0 +1,24 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: quota-portal
+  namespace: quota-portal
+  annotations:
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/name: Quota Portal
+    gethomepage.dev/description: Personal LiteLLM key and quota management
+    gethomepage.dev/group: AI
+    gethomepage.dev/icon: mdi-key-chain
+    gethomepage.dev/href: http://quota.sfl
+    gethomepage.dev/siteMonitor: http://quota.sfl
+    gethomepage.dev/external: "true"
+    gethomepage.dev/weight: "40"
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`quota.sfl`)
+      kind: Rule
+      services:
+        - name: quota-portal
+          port: 8000

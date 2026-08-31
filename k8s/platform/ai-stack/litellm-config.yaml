@@ -1,0 +1,53 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: litellm-config
+  namespace: ai-stack
+data:
+  litellm_config.yaml: |
+    litellm_settings:
+      success_callback: ["langfuse"]
+      failure_callback: ["langfuse"]
+      callbacks: ["dynamic_rate_limiter_v3"]
+      langfuse_default_tags:
+        - user_api_key_alias
+        - user_api_key_user_id
+        - user_api_key_team_id
+        - user_api_key_user_email
+
+    general_settings:
+      user_header_name: "X-OpenWebUI-User-Email"
+
+    model_list:
+      - model_name: gemini-2.5-pro-litellm
+        litellm_params:
+          model: gemini/gemini-2.5-pro
+          api_key: "os.environ/LITELLM_API_KEY"
+
+      - model_name: gemini-2.5-flash-litellm
+        litellm_params:
+          model: gemini/gemini-2.5-flash
+          api_key: "os.environ/LITELLM_API_KEY"
+
+      - model_name: gemini-2.0-flash-litellm
+        litellm_params:
+          model: gemini/gemini-2.0-flash
+          api_key: "os.environ/LITELLM_API_KEY"
+
+      - model_name: Auto Free
+        litellm_params:
+          model: openai/kilo-auto/free
+          api_base: "https://api.kilo.ai/api/gateway"
+          api_key: "os.environ/KILO_API_KEY"
+
+      # Smoke-test model for dynamic_rate_limiter_v3. Tiny pool so two contending
+      # keys observably get throttled within one minute. Uses mock_response so
+      # the test costs zero upstream tokens and never burns Gemini quota.
+      # Safe because the limiter check is a pre-call hook (RPM counting fires
+      # before the model dispatch). Exercised by
+      # Runbooks/Validate LiteLLM Dynamic Rate Limiter.md in the vault.
+      - model_name: dynamic-limit-test
+        litellm_params:
+          model: openai/dynamic-limit-test
+          mock_response: "pong"
+          rpm: 6

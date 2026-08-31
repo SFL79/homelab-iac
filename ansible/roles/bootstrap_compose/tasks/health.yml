@@ -1,0 +1,147 @@
+---
+- name: Check Gitea HTTP health directly over LAN
+  ansible.builtin.uri:
+    url: http://192.168.1.120:3000/api/healthz
+    return_content: true
+    status_code: 200
+  register: bootstrap_compose_gitea_health
+  delegate_to: localhost
+  become: false
+  check_mode: false
+  when: target_service == 'gitea'
+
+- name: Assert Gitea application health
+  ansible.builtin.assert:
+    that: bootstrap_compose_gitea_health.json.status == 'pass'
+  when: target_service == 'gitea'
+
+- name: Check Gitea SSH Git access with the runner read-only key
+  ansible.builtin.command:
+    argv:
+      - git
+      - ls-remote
+      - ssh://git@192.168.1.120:222/Homelab/homelab-iac.git
+      - HEAD
+  environment:
+    GIT_SSH_COMMAND: >-
+      ssh -i /home/sf135/apps/homelab-ansible/keys/gitea-readonly
+      -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes
+      -o UserKnownHostsFile=/home/sf135/apps/homelab-ansible/keys/known_hosts
+  changed_when: false
+  delegate_to: localhost
+  become: false
+  check_mode: false
+  when: target_service == 'gitea'
+
+- name: Check Vault health directly over LAN
+  ansible.builtin.uri:
+    url: http://192.168.1.120:8200/v1/sys/health
+    return_content: true
+    status_code: 200
+  register: bootstrap_compose_vault_health
+  delegate_to: localhost
+  become: false
+  check_mode: false
+  when: target_service == 'vault'
+
+- name: Assert Vault is initialized and unsealed
+  ansible.builtin.assert:
+    that:
+      - bootstrap_compose_vault_health.json.initialized | bool
+      - not (bootstrap_compose_vault_health.json.sealed | bool)
+  when: target_service == 'vault'
+
+- name: Query AdGuard DNS directly over LAN
+  ansible.builtin.command:
+    argv:
+      - "{{ ansible_playbook_python }}"
+      - "{{ playbook_dir }}/../scripts/dns_probe.py"
+      - 192.168.1.118
+      - gitea.sfl
+      - 192.168.1.120
+  changed_when: false
+  delegate_to: localhost
+  become: false
+  check_mode: false
+  when: target_service == 'adguard'
+
+- name: Check AdGuard admin HTTP directly over LAN
+  ansible.builtin.uri:
+    url: http://192.168.1.118:8089/
+    status_code: 200
+  delegate_to: localhost
+  become: false
+  check_mode: false
+  when: target_service == 'adguard'
+
+- name: Check Netdata API directly over LAN
+  ansible.builtin.uri:
+    url: http://192.168.1.118:19999/api/v1/info
+    return_content: true
+    status_code: 200
+  register: bootstrap_compose_netdata_info
+  delegate_to: localhost
+  become: false
+  check_mode: false
+  when: target_service == 'netdata'
+
+- name: Check Netdata active stream receivers
+  ansible.builtin.uri:
+    url: http://192.168.1.118:19999/api/v3/stream_info
+    return_content: true
+    status_code:
+      - 200
+      - 404
+  register: bootstrap_compose_netdata_streams
+  delegate_to: localhost
+  become: false
+  check_mode: false
+  when: target_service == 'netdata'
+
+- name: Assert every Netdata child has an active receiver
+  ansible.builtin.assert:
+    that:
+      - bootstrap_compose_netdata_info.json.version is defined
+      - bootstrap_compose_netdata_streams.json.receivers | int == 4
+  when: target_service == 'netdata'
+
+- name: Inspect Hermes container health
+  ansible.builtin.command:
+    argv:
+      - docker
+      - inspect
+      - hermes-agent
+      - hermes-vault-agent
+  register: bootstrap_compose_hermes_inspect
+  changed_when: false
+  check_mode: false
+  when: target_service == 'hermes'
+
+- name: Decode Hermes container state
+  ansible.builtin.set_fact:
+    bootstrap_compose_hermes_containers: >-
+      {{ bootstrap_compose_hermes_inspect.stdout | from_json }}
+  when: target_service == 'hermes'
+
+- name: Assert Hermes and Vault Agent are healthy
+  ansible.builtin.assert:
+    that:
+      - bootstrap_compose_hermes_containers[0].State.Health.Status == 'healthy'
+      - bootstrap_compose_hermes_containers[1].State.Health.Status == 'healthy'
+  when: target_service == 'hermes'
+
+- name: Check Hermes API directly over LAN
+  ansible.builtin.uri:
+    url: http://192.168.1.118:8642/health
+    return_content: true
+    status_code: 200
+  register: bootstrap_compose_hermes_api
+  delegate_to: localhost
+  become: false
+  check_mode: false
+  when: target_service == 'hermes'
+
+- name: Assert Hermes API health
+  ansible.builtin.assert:
+    that: bootstrap_compose_hermes_api.json.status == 'ok'
+  when: target_service == 'hermes'

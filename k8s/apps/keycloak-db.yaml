@@ -1,0 +1,53 @@
+# Bitnami PostgreSQL backing store for Keycloak.
+#
+# Bitnami moved their free container images to docker.io/bitnamilegacy in 2025
+# (no more security patches). We accept that for this POC and pin the image
+# repository explicitly. TODO: migrate to CloudNativePG (the keycloakx chart
+# ships an example for it) before any production rollout.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: keycloak-db
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  finalizers:
+    - resources-finalizer.argocd.io
+spec:
+  project: default
+  source:
+    repoURL: https://charts.bitnami.com/bitnami
+    chart: postgresql
+    targetRevision: "16.*"
+    helm:
+      releaseName: keycloak-db
+      valuesObject:
+        image:
+          repository: bitnamilegacy/postgresql
+        auth:
+          username: keycloak
+          database: keycloak
+          existingSecret: keycloak-secrets
+          secretKeys:
+            adminPasswordKey: postgres-password
+            userPasswordKey: postgres-password
+        primary:
+          persistence:
+            storageClass: fast-local
+            size: 5Gi
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: keycloak
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

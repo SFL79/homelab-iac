@@ -1,0 +1,101 @@
+---
+bootstrap_allowed_services:
+  - gitea
+  - vault
+  - adguard
+  - netdata
+  - hermes
+
+bootstrap_allowed_actions:
+  - status
+  - audit
+  - plan
+  - deploy
+  - rollback
+
+bootstrap_services:
+  gitea:
+    inventory_host: sf-optiplex7000
+    project_dir: /home/sf135/apps/gitea
+    project_mode: "0775"
+    project_name: gitea
+    compose_file: docker-compose.yaml
+    compose_source: compose/gitea/docker-compose.yml
+    compose_environment: {}
+    directories: []
+    managed_files:
+      - source: compose/gitea/docker-compose.yml
+        destination: docker-compose.yaml
+        mode: "0644"
+  vault:
+    inventory_host: sf-optiplex7000
+    project_dir: /home/sf135/apps/vault
+    project_mode: "0775"
+    project_name: vault
+    compose_file: docker-compose.yml
+    compose_source: compose/vault/docker-compose.yml
+    compose_environment: {}
+    directories:
+      - path: config
+        mode: "0775"
+    managed_files:
+      - source: compose/vault/docker-compose.yml
+        destination: docker-compose.yml
+        mode: "0644"
+      - source: compose/vault/vault.hcl
+        destination: config/vault.hcl
+        mode: "0644"
+  adguard:
+    inventory_host: sf-g6
+    project_dir: /home/sf135/apps/adguard
+    project_mode: "0775"
+    project_name: adguard
+    compose_file: docker-compose.yml
+    compose_source: compose/adguard/docker-compose.yml
+    compose_environment: {}
+    directories: []
+    managed_files:
+      - source: compose/adguard/docker-compose.yml
+        destination: docker-compose.yml
+        mode: "0644"
+  netdata:
+    inventory_host: sf-g6
+    project_dir: /home/sf135/apps/netdata
+    project_mode: "0755"
+    project_name: netdata
+    compose_file: docker-compose.yml
+    compose_source: compose/netdata/docker-compose.yml
+    compose_environment:
+      NODE_HOSTNAME: g6
+    directories: []
+    managed_files:
+      - source: compose/netdata/docker-compose.yml
+        destination: docker-compose.yml
+        mode: "0644"
+  hermes:
+    inventory_host: sf-g6
+    project_dir: /home/sf135/apps/hermes_agent
+    project_mode: "0750"
+    project_name: hermes-agent
+    compose_file: docker-compose.yml
+    compose_source: compose/hermes/docker-compose.yml
+    compose_environment: {}
+    directories:
+      - path: config
+        mode: "0750"
+    managed_files:
+      - source: compose/hermes/docker-compose.yml
+        destination: docker-compose.yml
+        mode: "0644"
+      - source: compose/hermes/config/vault-agent.hcl
+        destination: config/vault-agent.hcl
+        mode: "0644"
+      - source: compose/hermes/config/kubernetes-mcp.toml
+        destination: config/kubernetes-mcp.toml
+        mode: "0644"
+      - source: compose/hermes/config/hermes.env.ctmpl
+        destination: config/hermes.env.ctmpl
+        mode: "0644"
+      - source: compose/hermes/config/hermes.logrotate
+        destination: config/hermes.logrotate
+        mode: "0644"

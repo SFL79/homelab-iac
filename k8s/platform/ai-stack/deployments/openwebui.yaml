@@ -1,0 +1,93 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: open-webui
+  namespace: ai-stack
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: open-webui
+  template:
+    metadata:
+      labels:
+        app: open-webui
+    spec:
+      containers:
+        - name: open-webui
+          image: ghcr.io/open-webui/open-webui:v0.9.5
+          ports:
+            - containerPort: 8080
+          env:
+            - name: OPENAI_API_BASE_URLS
+              value: "http://litellm:4000/v1;http://hermes:8642"
+            - name: OPENAI_API_KEYS
+              valueFrom:
+                secretKeyRef:
+                  name: ai-stack-secrets
+                  key: OPENAI_API_KEYS
+            - name: HF_HUB_OFFLINE
+              value: "1"
+            - name: OFFLINE_MODE
+              value: "false"
+            - name: ENABLE_FORWARD_USER_INFO_HEADERS
+              value: "true"
+            - name: ENABLE_OAUTH_SIGNUP
+              value: "true"
+            - name: OAUTH_PROVIDER_NAME
+              value: "Keycloak"
+            - name: OAUTH_CLIENT_ID
+              value: "openwebui"
+            - name: OPENID_PROVIDER_URL
+              value: "http://keycloak.sfl/realms/homelab/.well-known/openid-configuration"
+            - name: OAUTH_SCOPES
+              value: "openid email profile"
+            - name: OAUTH_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: ai-stack-secrets
+                  key: OPENWEBUI_OIDC_CLIENT_SECRET
+          volumeMounts:
+            - name: data
+              mountPath: /app/backend/data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: openwebui-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: open-webui
+  namespace: ai-stack
+spec:
+  selector:
+    app: open-webui
+  ports:
+    - port: 3000
+      targetPort: 8080
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: open-webui
+  namespace: ai-stack
+  annotations:
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/name: OpenWebUI
+    gethomepage.dev/description: AI chat interface
+    gethomepage.dev/group: AI
+    gethomepage.dev/icon: open-webui.png
+    gethomepage.dev/href: http://owui.sfl
+    gethomepage.dev/siteMonitor: http://owui.sfl
+    gethomepage.dev/external: "true"
+    gethomepage.dev/weight: "10"
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`owui.sfl`)
+      kind: Rule
+      services:
+        - name: open-webui
+          port: 3000

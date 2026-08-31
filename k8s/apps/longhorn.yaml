@@ -1,0 +1,35 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: longhorn
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.io
+spec:
+  project: default
+  source:
+    repoURL: https://charts.longhorn.io
+    chart: longhorn
+    targetRevision: 1.11.1
+    helm:
+      releaseName: longhorn
+      valuesObject:
+        defaultSettings:
+          defaultReplicaCount: 1
+          # Auto-recover RWO volumes when a node reboots/goes down.
+          # Without this (default "do-nothing"), a node reboot leaves RWO volumes
+          # stuck attached to the down node -> Multi-Attach / mount-EBUSY on the
+          # rescheduled pod (incident 2026-06-16, quota-portal after sf-y530 reboot).
+          # Only deletes the stuck Pod object; PVC/PV/replica data are untouched.
+          nodeDownPodDeletionPolicy: delete-both-statefulset-and-deployment-pod
+        persistence:
+          defaultClass: false
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: longhorn-system
+  syncPolicy:
+    automated:
+      prune: false
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: quota-portal
+  namespace: quota-portal
+spec:
+  selector:
+    app: quota-portal
+  ports:
+    - port: 8000
+      targetPort: http
+      name: http

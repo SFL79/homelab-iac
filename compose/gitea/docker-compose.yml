@@ -1,0 +1,36 @@
+version: "3.8"
+
+services:
+  server:
+    image: gitea/gitea:1.22.6
+    container_name: gitea
+    restart: always
+    environment:
+      - USER_UID=1000
+      - USER_GID=1000
+      - GITEA__database__DB_TYPE=sqlite3
+      - GITEA__server__DOMAIN=sf-optiplex7000.tail27f676.ts.net
+      - GITEA__server__SSH_DOMAIN=sf-optiplex7000.tail27f676.ts.net
+      - GITEA__server__HTTP_PORT=3000
+      - GITEA__server__ROOT_URL=http://sf-optiplex7000.tail27f676.ts.net:3000
+      - GITEA__server__SSH_PORT=222
+      - GITEA__service__DISABLE_REGISTRATION=true
+      - GITEA__general__APP_NAME=Homelab IaC
+    networks:
+      - gitea
+    volumes:
+      - /home/sf135/apps/gitea/data:/data
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      - "3000:3000"
+      - "222:22"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 1024M
+
+networks:
+  gitea:
+    external: false

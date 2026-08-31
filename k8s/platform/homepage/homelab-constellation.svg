@@ -1,0 +1,119 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2560 1440" role="img" aria-label="Abstract homelab network constellation">
+  <defs>
+    <linearGradient id="base" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#09070b"/>
+      <stop offset="0.48" stop-color="#151018"/>
+      <stop offset="1" stop-color="#0a1012"/>
+    </linearGradient>
+    <radialGradient id="rose-haze">
+      <stop offset="0" stop-color="#f43f5e" stop-opacity="0.34"/>
+      <stop offset="1" stop-color="#f43f5e" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="amber-haze">
+      <stop offset="0" stop-color="#f97316" stop-opacity="0.27"/>
+      <stop offset="1" stop-color="#f97316" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="teal-haze">
+      <stop offset="0" stop-color="#14b8a6" stop-opacity="0.2"/>
+      <stop offset="1" stop-color="#14b8a6" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="route-warm" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#fb7185" stop-opacity="0.15"/>
+      <stop offset="0.5" stop-color="#f59e0b" stop-opacity="0.72"/>
+      <stop offset="1" stop-color="#f97316" stop-opacity="0.12"/>
+    </linearGradient>
+    <linearGradient id="route-cool" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#14b8a6" stop-opacity="0.08"/>
+      <stop offset="0.5" stop-color="#2dd4bf" stop-opacity="0.52"/>
+      <stop offset="1" stop-color="#fb7185" stop-opacity="0.12"/>
+    </linearGradient>
+    <radialGradient id="center-vignette">
+      <stop offset="0" stop-color="#0d0b10" stop-opacity="0.7"/>
+      <stop offset="0.58" stop-color="#0d0b10" stop-opacity="0.34"/>
+      <stop offset="1" stop-color="#0d0b10" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grid" width="72" height="72" patternUnits="userSpaceOnUse">
+      <path d="M72 0H0V72" fill="none" stroke="#fda4af" stroke-opacity="0.055" stroke-width="1"/>
+      <circle cx="0" cy="0" r="1.8" fill="#fdba74" fill-opacity="0.2"/>
+    </pattern>
+    <pattern id="stars" width="210" height="170" patternUnits="userSpaceOnUse">
+      <circle cx="22" cy="31" r="1.2" fill="#fff7ed" fill-opacity="0.36"/>
+      <circle cx="116" cy="67" r="0.9" fill="#fda4af" fill-opacity="0.34"/>
+      <circle cx="181" cy="132" r="1.4" fill="#99f6e4" fill-opacity="0.25"/>
+      <circle cx="72" cy="147" r="0.7" fill="#ffffff" fill-opacity="0.28"/>
+    </pattern>
+    <filter id="blur-rose" x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur stdDeviation="20"/>
+    </filter>
+    <filter id="glow" x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur stdDeviation="7" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <g id="server-node">
+      <circle r="70" fill="#160f17" fill-opacity="0.84" stroke="#fb7185" stroke-opacity="0.42" stroke-width="2"/>
+      <circle r="57" fill="none" stroke="#fdba74" stroke-opacity="0.14" stroke-width="1" stroke-dasharray="4 8"/>
+      <rect x="-29" y="-35" width="58" height="70" rx="9" fill="#241820" stroke="#fecdd3" stroke-opacity="0.32"/>
+      <path d="M-18-18H12M-18 0H12M-18 18H12" stroke="#fb7185" stroke-opacity="0.58" stroke-width="3" stroke-linecap="round"/>
+      <circle cx="20" cy="-18" r="3" fill="#f59e0b"/>
+      <circle cx="20" cy="0" r="3" fill="#2dd4bf"/>
+      <circle cx="20" cy="18" r="3" fill="#fb7185"/>
+    </g>
+    <g id="satellite-node">
+      <circle r="24" fill="#161116" stroke="#fdba74" stroke-opacity="0.55" stroke-width="2"/>
+      <circle r="8" fill="#fb7185" fill-opacity="0.8"/>
+      <circle r="4" fill="#fff7ed"/>
+    </g>
+  </defs>
+
+  <rect width="2560" height="1440" fill="url(#base)"/>
+  <ellipse cx="160" cy="170" rx="720" ry="600" fill="url(#rose-haze)"/>
+  <ellipse cx="2440" cy="210" rx="760" ry="610" fill="url(#amber-haze)"/>
+  <ellipse cx="1910" cy="1410" rx="850" ry="520" fill="url(#teal-haze)"/>
+  <rect width="2560" height="1440" fill="url(#grid)"/>
+  <rect width="2560" height="1440" fill="url(#stars)"/>
+
+  <g fill="none" stroke-linecap="round">
+    <path d="M230 310C410 170 570 180 750 230S1000 290 1130 170" stroke="url(#route-warm)" stroke-width="3"/>
+    <path d="M250 350C430 470 540 600 740 650S960 790 1080 930" stroke="url(#route-cool)" stroke-width="2.5"/>
+    <path d="M2290 260C2110 130 1940 190 1840 340S1700 500 1510 520" stroke="url(#route-warm)" stroke-width="3"/>
+    <path d="M2300 310C2180 500 2140 690 2240 870S2240 1100 2070 1240" stroke="url(#route-cool)" stroke-width="2.5"/>
+    <path d="M670 1240C880 1320 1050 1260 1190 1140" stroke="url(#route-warm)" stroke-width="2"/>
+    <path d="M1510 1180C1700 1270 1860 1280 2070 1240" stroke="url(#route-cool)" stroke-width="2"/>
+    <path d="M110 1050C290 970 430 1010 570 1130S740 1290 910 1340" stroke="#fb7185" stroke-opacity="0.1" stroke-width="1.5" stroke-dasharray="8 14"/>
+    <path d="M1700 80C1910 10 2110 80 2390 20" stroke="#fdba74" stroke-opacity="0.1" stroke-width="1.5" stroke-dasharray="8 14"/>
+  </g>
+
+  <g filter="url(#glow)">
+    <use href="#server-node" transform="translate(250 330) scale(1.18)"/>
+    <use href="#server-node" transform="translate(2290 280)"/>
+    <use href="#server-node" transform="translate(2070 1240) scale(.9)"/>
+  </g>
+  <g>
+    <use href="#satellite-node" transform="translate(730 230)"/>
+    <use href="#satellite-node" transform="translate(735 650)"/>
+    <use href="#satellite-node" transform="translate(1080 930) scale(.8)"/>
+    <use href="#satellite-node" transform="translate(1130 170) scale(.72)"/>
+    <use href="#satellite-node" transform="translate(1840 340)"/>
+    <use href="#satellite-node" transform="translate(1510 520) scale(.78)"/>
+    <use href="#satellite-node" transform="translate(2240 870)"/>
+    <use href="#satellite-node" transform="translate(1510 1180) scale(.75)"/>
+    <use href="#satellite-node" transform="translate(670 1240) scale(.78)"/>
+  </g>
+
+  <g fill="none" stroke="#fda4af" stroke-opacity="0.08">
+    <path d="M-70 610C150 510 330 540 470 700S770 850 920 740"/>
+    <path d="M-90 650C150 550 350 590 500 750S780 900 950 790"/>
+    <path d="M1730 820C1910 710 2110 720 2230 840S2470 1010 2670 900"/>
+    <path d="M1690 860C1900 750 2120 770 2260 890S2490 1050 2690 940"/>
+  </g>
+
+  <ellipse cx="1320" cy="710" rx="760" ry="540" fill="url(#center-vignette)"/>
+  <rect width="2560" height="1440" fill="none" stroke="#fb7185" stroke-opacity="0.05" stroke-width="18"/>
+
+  <g fill="#fff7ed" filter="url(#glow)">
+    <circle r="4"><animateMotion dur="12s" repeatCount="indefinite" path="M230 310C410 170 570 180 750 230S1000 290 1130 170"/></circle>
+    <circle r="3"><animateMotion dur="15s" begin="-6s" repeatCount="indefinite" path="M250 350C430 470 540 600 740 650S960 790 1080 930"/></circle>
+    <circle r="4"><animateMotion dur="14s" begin="-4s" repeatCount="indefinite" path="M2290 260C2110 130 1940 190 1840 340S1700 500 1510 520"/></circle>
+    <circle r="3"><animateMotion dur="17s" begin="-9s" repeatCount="indefinite" path="M2300 310C2180 500 2140 690 2240 870S2240 1100 2070 1240"/></circle>
+  </g>
+</svg>

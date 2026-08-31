@@ -1,0 +1,16 @@
+---
+- name: Run source preflight checks
+  ansible.builtin.include_tasks: preflight.yml
+  when: bootstrap_action in ['plan', 'deploy', 'rollback']
+
+- name: Audit recorded managed-file checksums
+  ansible.builtin.include_tasks: audit.yml
+  when: bootstrap_action == 'audit'
+
+- name: Plan or converge the requested service
+  ansible.builtin.include_tasks: converge.yml
+  when: bootstrap_action in ['plan', 'deploy', 'rollback']
+
+- name: Report runtime and health
+  ansible.builtin.include_tasks: status.yml
+  when: bootstrap_action == 'status'

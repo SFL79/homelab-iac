@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: radarr
+  namespace: media-stack
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: radarr
+  template:
+    metadata:
+      labels:
+        app: radarr
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: sf-y530
+      containers:
+        - name: radarr
+          image: lscr.io/linuxserver/radarr:latest
+          env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+            - name: TZ
+              value: Asia/Jerusalem
+          ports:
+            - containerPort: 7878
+          volumeMounts:
+            - name: media-base
+              mountPath: /config
+              subPath: radarr-config
+            - name: media-base
+              mountPath: /data
+      volumes:
+        - name: media-base
+          persistentVolumeClaim:
+            claimName: media-base
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: radarr
+  namespace: media-stack
+spec:
+  selector:
+    app: radarr
+  ports:
+    - port: 7878
+      targetPort: 7878
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: radarr
+  namespace: media-stack
+  annotations:
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/name: Radarr
+    gethomepage.dev/description: Movie automation
+    gethomepage.dev/group: Media
+    gethomepage.dev/icon: radarr.png
+    gethomepage.dev/href: http://radarr.sfl
+    gethomepage.dev/siteMonitor: http://radarr.sfl
+    gethomepage.dev/external: "true"
+    gethomepage.dev/weight: "30"
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`radarr.sfl`)
+      kind: Rule
+      services:
+        - name: radarr
+          port: 7878

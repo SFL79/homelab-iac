@@ -1,0 +1,7 @@
+# /etc/rancher/k3s/config.yaml on sf-g6
+# Source of truth: homelab-iac/nodes/sf-g6/k3s-config.yaml
+# Apply: sudo install -m 0644 -D <this file> /etc/rancher/k3s/config.yaml && sudo systemctl restart k3s
+
+# Ethernet-only host (eno1, 192.168.1.118). Pinning is defensive, in case a
+# future change adds WiFi or another interface.
+node-ip: 192.168.1.118

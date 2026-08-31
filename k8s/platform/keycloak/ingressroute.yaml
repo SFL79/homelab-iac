@@ -1,0 +1,24 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: keycloak
+  namespace: keycloak
+  annotations:
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/name: Keycloak
+    gethomepage.dev/description: Homelab identity provider
+    gethomepage.dev/group: Platform
+    gethomepage.dev/icon: keycloak.png
+    gethomepage.dev/href: http://keycloak.sfl
+    gethomepage.dev/siteMonitor: http://keycloak.sfl
+    gethomepage.dev/external: "true"
+    gethomepage.dev/weight: "30"
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`keycloak.sfl`)
+      kind: Rule
+      services:
+        - name: keycloak-keycloakx-http
+          port: 80

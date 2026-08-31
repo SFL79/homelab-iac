@@ -1,0 +1,49 @@
+---
+- name: Ensure the service project directory exists
+  ansible.builtin.file:
+    path: "{{ bootstrap_service.project_dir }}"
+    state: directory
+    mode: "{{ bootstrap_service.project_mode }}"
+
+- name: Ensure allowlisted configuration directories exist
+  ansible.builtin.file:
+    path: "{{ bootstrap_service.project_dir }}/{{ item.path }}"
+    state: directory
+    mode: "{{ item.mode }}"
+  loop: "{{ bootstrap_service.directories }}"
+  loop_control:
+    label: "{{ item.path }}"
+
+- name: Copy only allowlisted service files
+  ansible.builtin.copy:
+    src: "{{ source_root }}/{{ item.source }}"
+    dest: "{{ bootstrap_service.project_dir }}/{{ item.destination }}"
+    owner: sf135
+    group: sf135
+    mode: "{{ item.mode }}"
+  loop: "{{ bootstrap_service.managed_files }}"
+  loop_control:
+    label: "{{ item.destination }}"
+
+- name: Converge the Compose project
+  community.docker.docker_compose_v2:
+    project_src: "{{ bootstrap_service.project_dir }}"
+    project_name: "{{ bootstrap_service.project_name }}"
+    files:
+      - "{{ bootstrap_service.compose_file }}"
+    state: present
+    pull: missing
+    build: never
+    recreate: auto
+    remove_orphans: false
+    assume_yes: false
+    wait: true
+    wait_timeout: 180
+  environment: "{{ bootstrap_service.compose_environment }}"
+
+- name: Verify service health after convergence
+  ansible.builtin.include_tasks: health.yml
+
+- name: Record the deployed revision and checksums
+  ansible.builtin.include_tasks: record.yml
+  when: not ansible_check_mode

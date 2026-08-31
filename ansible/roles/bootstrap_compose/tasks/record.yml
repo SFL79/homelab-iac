@@ -1,0 +1,28 @@
+---
+- name: Calculate managed-file checksums
+  ansible.builtin.stat:
+    path: "{{ bootstrap_service.project_dir }}/{{ item.destination }}"
+    checksum_algorithm: sha256
+  loop: "{{ bootstrap_service.managed_files }}"
+  loop_control:
+    label: "{{ item.destination }}"
+  register: bootstrap_compose_managed_stats
+
+- name: Build managed-file checksum map
+  ansible.builtin.set_fact:
+    bootstrap_compose_managed_checksums: >-
+      {{ bootstrap_compose_managed_checksums | default({}) |
+         combine({item.stat.path: item.stat.checksum}) }}
+  loop: "{{ bootstrap_compose_managed_stats.results }}"
+  loop_control:
+    label: "{{ item.stat.path }}"
+
+- name: Record deployment state
+  ansible.builtin.copy:
+    content: >-
+      {{ {'revision': source_revision,
+          'managed_files': bootstrap_compose_managed_checksums} | to_nice_json }}
+    dest: "{{ bootstrap_service.project_dir }}/.ansible-managed.json"
+    owner: sf135
+    group: sf135
+    mode: "0600"

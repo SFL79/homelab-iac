@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prowlarr
+  namespace: media-stack
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prowlarr
+  template:
+    metadata:
+      labels:
+        app: prowlarr
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: sf-y530
+      containers:
+        - name: prowlarr
+          image: lscr.io/linuxserver/prowlarr:latest
+          env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+            - name: TZ
+              value: Asia/Jerusalem
+          ports:
+            - containerPort: 9696
+          volumeMounts:
+            - name: media-base
+              mountPath: /config
+              subPath: prowlarr-config
+      volumes:
+        - name: media-base
+          persistentVolumeClaim:
+            claimName: media-base
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prowlarr
+  namespace: media-stack
+spec:
+  selector:
+    app: prowlarr
+  ports:
+    - port: 9696
+      targetPort: 9696
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: prowlarr
+  namespace: media-stack
+  annotations:
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/name: Prowlarr
+    gethomepage.dev/description: Indexer management
+    gethomepage.dev/group: Media
+    gethomepage.dev/icon: prowlarr.png
+    gethomepage.dev/href: http://prowlarr.sfl
+    gethomepage.dev/siteMonitor: http://prowlarr.sfl
+    gethomepage.dev/external: "true"
+    gethomepage.dev/weight: "40"
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`prowlarr.sfl`)
+      kind: Rule
+      services:
+        - name: prowlarr
+          port: 9696

@@ -1,0 +1,21 @@
+---
+- name: Read Compose runtime status
+  ansible.builtin.command:
+    argv:
+      - docker
+      - compose
+      - --project-name
+      - "{{ bootstrap_service.project_name }}"
+      - --file
+      - "{{ bootstrap_service.project_dir }}/{{ bootstrap_service.compose_file }}"
+      - ps
+  environment: "{{ bootstrap_service.compose_environment }}"
+  register: bootstrap_compose_status
+  changed_when: false
+
+- name: Show Compose runtime status
+  ansible.builtin.debug:
+    var: bootstrap_compose_status.stdout_lines
+
+- name: Verify service health
+  ansible.builtin.include_tasks: health.yml

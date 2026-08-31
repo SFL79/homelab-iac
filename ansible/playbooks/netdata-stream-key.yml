@@ -1,0 +1,67 @@
+---
+- name: Render the host-local Netdata parent stream keys
+  hosts: netdata
+  gather_facts: false
+  serial: 1
+  any_errors_fatal: true
+  pre_tasks:
+    - name: Decode stream keys supplied through the controller environment
+      ansible.builtin.set_fact:
+        bootstrap_compose_netdata_stream_keys: >-
+          {{ lookup('ansible.builtin.env', 'NETDATA_STREAM_KEYS_JSON') | from_json }}
+      no_log: true
+
+    - name: Validate one or two supplied stream keys
+      ansible.builtin.assert:
+        that:
+          - bootstrap_compose_netdata_stream_keys | type_debug == 'list'
+          - bootstrap_compose_netdata_stream_keys | length in [1, 2]
+          - >-
+            bootstrap_compose_netdata_stream_keys |
+            select('match', '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$') |
+            list | length == bootstrap_compose_netdata_stream_keys | length
+        fail_msg: Supply one or two lowercase UUID stream keys as a list.
+      no_log: true
+
+    - name: Select the Netdata service definition
+      ansible.builtin.set_fact:
+        bootstrap_service: "{{ bootstrap_services.netdata }}"
+
+  tasks:
+    - name: Render accepted Netdata stream keys locally on the parent
+      ansible.builtin.copy:
+        content: |
+          # Host-local secret. Render only during explicit rotation or rebuild.
+          {% for stream_key in bootstrap_compose_netdata_stream_keys %}
+          [{{ stream_key }}]
+              enabled = yes
+              default history = 3600
+              default memory mode = ram
+              health enabled by default = auto
+              allow from = *
+          {% endfor %}
+        dest: /home/sf135/apps/netdata/stream.conf
+        owner: sf135
+        group: sf135
+        mode: "0600"
+      no_log: true
+      diff: false
+
+    - name: Restart the Netdata parent after an explicit key change
+      ansible.builtin.command:
+        argv:
+          - docker
+          - compose
+          - --project-name
+          - netdata
+          - --file
+          - /home/sf135/apps/netdata/docker-compose.yml
+          - restart
+          - netdata
+      environment: "{{ bootstrap_service.compose_environment }}"
+      changed_when: true
+
+    - name: Verify all Netdata children reconnect
+      ansible.builtin.include_tasks: ../roles/bootstrap_compose/tasks/health.yml
+      vars:
+        target_service: netdata

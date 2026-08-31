@@ -1,0 +1,86 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: keycloak
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  finalizers:
+    - resources-finalizer.argocd.io
+spec:
+  project: default
+  source:
+    repoURL: https://codecentric.github.io/helm-charts
+    chart: keycloakx
+    targetRevision: "7.1.11"
+    helm:
+      releaseName: keycloak
+      valuesObject:
+        # Keycloak 26 serves health endpoints at /health/* on the management port.
+        # The chart's default `http.relativePath: /auth` would make probes hit
+        # /auth/health/* which 404s on Keycloak 26 and triggers CrashLoopBackOff.
+        http:
+          relativePath: "/"
+
+        command:
+          - "/opt/keycloak/bin/kc.sh"
+          - "start"
+          - "--http-enabled=true"
+          - "--http-port=8080"
+          - "--hostname=keycloak.sfl"
+          - "--hostname-strict=false"
+          - "--proxy-headers=xforwarded"
+        replicas: 1
+
+        # KC_BOOTSTRAP_ADMIN_* are the Keycloak 26+ names; the older KEYCLOAK_ADMIN_* still
+        # work but emit a deprecation warning on startup.
+        extraEnv: |
+          - name: KC_BOOTSTRAP_ADMIN_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: keycloak-secrets
+                key: admin-user
+          - name: KC_BOOTSTRAP_ADMIN_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: keycloak-secrets
+                key: admin-password
+          - name: KC_DB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: keycloak-secrets
+                key: postgres-password
+          - name: JAVA_OPTS_APPEND
+            value: "-XX:MaxRAMPercentage=50.0"
+
+        dbchecker:
+          enabled: true
+
+        database:
+          vendor: postgres
+          hostname: keycloak-db-postgresql
+          port: 5432
+          username: keycloak
+          database: keycloak
+
+        resources:
+          requests:
+            cpu: 200m
+            memory: 512Mi
+          limits:
+            cpu: "1"
+            memory: 1Gi
+
+        # Ingress handled by Traefik IngressRoute in keycloak-config app.
+        ingress:
+          enabled: false
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: keycloak
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

@@ -1,0 +1,11 @@
+# /etc/rancher/k3s/registries.yaml on sf-g9
+# Source of truth: homelab-iac/nodes/sf-g9/registries.yaml
+
+mirrors:
+  gitea.sfl:
+    endpoint:
+      - "http://gitea.sfl"
+configs:
+  "gitea.sfl":
+    tls:
+      insecure_skip_verify: true

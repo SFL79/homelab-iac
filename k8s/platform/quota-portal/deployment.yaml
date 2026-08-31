@@ -1,0 +1,90 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: quota-portal
+  namespace: quota-portal
+spec:
+  replicas: 1
+  # Recreate not RollingUpdate: SQLite + RWO PVC means only one pod may hold the
+  # data dir at a time. RollingUpdate would briefly try to schedule two pods.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: quota-portal
+  template:
+    metadata:
+      labels:
+        app: quota-portal
+    spec:
+      imagePullSecrets:
+        - name: gitea-registry
+      securityContext:
+        fsGroup: 10001
+      containers:
+        - name: quota-portal
+          image: gitea.sfl/homelab/quota-portal:0.1.5
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+              name: http
+          env:
+            - name: OIDC_ISSUER
+              value: http://keycloak.sfl/realms/homelab
+            - name: OIDC_CLIENT_ID
+              value: quota-portal
+            - name: OIDC_REDIRECT_URI
+              value: http://quota.sfl/auth/callback
+            - name: LITELLM_URL
+              value: http://litellm.ai-stack:4000
+            - name: LITELLM_MODELS
+              value: ""
+            - name: DEFAULT_TPM
+              value: "100000"
+            - name: DEFAULT_RPM
+              value: "1000"
+            - name: PUBLIC_BASE_URL
+              value: http://quota.sfl
+            - name: ADMIN_EMAILS
+              value: "s12345678@keycloak.sfl"
+            - name: OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: quota-portal-secrets
+                  key: OIDC_CLIENT_SECRET
+            - name: SESSION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: quota-portal-secrets
+                  key: SESSION_SECRET
+            - name: LITELLM_MASTER_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: quota-portal-litellm
+                  key: LITELLM_MASTER_KEY
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: quota-portal-data

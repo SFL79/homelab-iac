@@ -1,0 +1,67 @@
+# Open Terminal — per-team sandboxes via StatefulSet.
+# Scale by changing `replicas`: each ordinal pod (open-terminal-0, -1, ...)
+# gets its OWN PVC (data-open-terminal-N) and is reachable on the same port
+# at a stable per-pod DNS name through the headless Service below:
+#   http://open-terminal-<N>.open-terminal.ai-stack.svc:8000
+# All replicas share one API key (open-terminal-secret); isolation is the
+# per-pod filesystem, and OWUI binds each group to a specific pod hostname.
+apiVersion: v1
+kind: Service
+metadata:
+  name: open-terminal
+  namespace: ai-stack
+spec:
+  clusterIP: None          # headless — gives each pod stable DNS
+  selector:
+    app: open-terminal
+  ports:
+    - port: 8000
+      targetPort: 8000
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: open-terminal
+  namespace: ai-stack
+spec:
+  serviceName: open-terminal
+  replicas: 4
+  selector:
+    matchLabels:
+      app: open-terminal
+  template:
+    metadata:
+      labels:
+        app: open-terminal
+    spec:
+      containers:
+        - name: open-terminal
+          image: ghcr.io/open-webui/open-terminal:latest
+          ports:
+            - containerPort: 8000
+          env:
+            - name: OPEN_TERMINAL_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: open-terminal-secret
+                  key: OPEN_TERMINAL_API_KEY
+          resources:
+            requests:
+              cpu: 25m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          volumeMounts:
+            - name: data
+              mountPath: /home/user
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        storageClassName: medium-local
+        resources:
+          requests:
+            storage: 1Gi

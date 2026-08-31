@@ -1,0 +1,24 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: langfuse
+  namespace: langfuse
+  annotations:
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/name: Langfuse
+    gethomepage.dev/description: LLM traces and observability
+    gethomepage.dev/group: AI
+    gethomepage.dev/icon: sh-langfuse.svg
+    gethomepage.dev/href: http://langfuse.sfl
+    gethomepage.dev/siteMonitor: http://langfuse.sfl
+    gethomepage.dev/external: "true"
+    gethomepage.dev/weight: "30"
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`langfuse.sfl`)
+      kind: Rule
+      services:
+        - name: langfuse-web
+          port: 3000

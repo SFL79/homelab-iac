@@ -1,0 +1,41 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argocd
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.io
+spec:
+  project: default
+  source:
+    repoURL: https://argoproj.github.io/argo-helm
+    chart: argo-cd
+    targetRevision: 9.5.4
+    helm:
+      releaseName: argocd
+      valuesObject:
+        repoServer:
+          # Default liveness probe timeoutSeconds=1 is too tight: the
+          # /healthz?full=true check makes an internal gRPC self-call that
+          # queues behind concurrent GenerateManifest/git fetches and can take
+          # 2-5s, causing spurious SIGTERM restarts (saw 123 restarts / 650
+          # probe failures). Relax the timeout so a busy-but-healthy
+          # repo-server isn't killed.
+          livenessProbe:
+            timeoutSeconds: 5
+            failureThreshold: 3
+        configs:
+          params:
+            server.insecure: "true"
+          ssh:
+            extraHosts: |
+              [192.168.1.120]:222 ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDrUaxl1/gAxXosIjPIfnXXbuUX5WEZgr/hbmoRkJF+H82hy3p35X4i+iZtYSGhvYar99hRVyILSjOV6zXC331TjUH460kSeOGWZ+Ig8LRzNwPPujcpp1+LJ43aFDpqtwTILM9AlyRFc9/coXL+U58vjW06rx8QIkhSgm1yf07kPHMyj0+B+GN6DW0H7p7My00VpXQbDY3BW0WQv0uNaJMC1U7w511n0Iv3U9laHvdmt/t/gDmzsajr6KjzgqDE+TH6lz4IKZxN6o3H6fbdXulb4AyCyk+UjJ334t3eWOewTB/w6e7O5nXInUpIRGREIaK0XXQbmoFNDcst2lWTxA/29EUhsn3qg+fML8csnafVLxzjuxz6NdYPN0XjDUnwpQhZV3eUMfDmVdOReUaejytoREB3+0+IuHsAUMLm1iEmumHUTpU1JnPLJNuBlJ5SXW1Ll+rHBHMeSwxT71Hb85GVGVP1isyZ8nw1IsBX/o4QoEJQduD/g8DyWs0kG/0MKKc=
+              [192.168.1.120]:222 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFcGOvF1jS6rsmAMyKaBz5SV7mO67XTXr2FP2SGR+ewE
+              [192.168.1.120]:222 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBJBUl21Z7EcXqxMc5M6PZoOFXa3EE31+tzUvmZZ6leDRAlGKOfafV2uflUWq3bkPpdXG94y3ujCpJFD888ScufY=
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: false
+      selfHeal: false

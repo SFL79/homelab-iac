@@ -1,0 +1,48 @@
+---
+- name: Check for recorded deployment state
+  ansible.builtin.stat:
+    path: "{{ bootstrap_service.project_dir }}/.ansible-managed.json"
+  register: bootstrap_compose_state_file
+
+- name: Require an adopted service before auditing
+  ansible.builtin.assert:
+    that: bootstrap_compose_state_file.stat.isreg | default(false)
+    fail_msg: >-
+      {{ target_service }} has not been adopted by Ansible; plan and deploy a
+      committed revision before auditing drift.
+
+- name: Read recorded deployment state
+  ansible.builtin.slurp:
+    src: "{{ bootstrap_service.project_dir }}/.ansible-managed.json"
+  register: bootstrap_compose_state_raw
+
+- name: Decode recorded deployment state
+  ansible.builtin.set_fact:
+    bootstrap_compose_state: "{{ bootstrap_compose_state_raw.content | b64decode | from_json }}"
+
+- name: Check managed files without modifying them
+  ansible.builtin.stat:
+    path: "{{ item.key }}"
+    checksum_algorithm: sha256
+  loop: "{{ bootstrap_compose_state.managed_files | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+  register: bootstrap_compose_audit_stats
+
+- name: Assert every managed file matches its recorded checksum
+  ansible.builtin.assert:
+    that:
+      - item.stat.exists
+      - item.stat.isreg
+      - item.stat.checksum == item.item.value
+    fail_msg: "Configuration drift detected in {{ item.item.key }}"
+    success_msg: "No drift: {{ item.item.key }}"
+  loop: "{{ bootstrap_compose_audit_stats.results }}"
+  loop_control:
+    label: "{{ item.item.key }}"
+
+- name: Report audited revision
+  ansible.builtin.debug:
+    msg: >-
+      {{ target_service }} matches deployed revision
+      {{ bootstrap_compose_state.revision }}

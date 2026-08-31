@@ -1,0 +1,9 @@
+# /etc/rancher/k3s/config.yaml on sf-y530
+# Source of truth: homelab-iac/nodes/sf-y530/k3s-config.yaml
+# Apply: sudo install -m 0644 -D <this file> /etc/rancher/k3s/config.yaml && sudo systemctl restart k3s
+
+# Pin k3s identity to the Ethernet IP. sf-y530 has both Ethernet (enp7s0,
+# 192.168.1.121, primary) and WiFi (wlp0s20f3, 192.168.1.114, fallback).
+# Without this pin, if Ethernet flaps, k3s re-registers itself on the WiFi IP
+# and the cluster splits-brain. Caused an incident on 2026-05-08.
+node-ip: 192.168.1.121

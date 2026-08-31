@@ -1,0 +1,9 @@
+# /etc/rancher/k3s/config.yaml on sf-g9
+# Source of truth: homelab-iac/nodes/sf-g9/k3s-config.yaml
+# Apply: sudo install -m 0644 -D <this file> /etc/rancher/k3s/config.yaml && sudo systemctl restart k3s-agent
+
+# Ethernet-only worker node (eno1, 192.168.1.117). Pinning prevents k3s
+# from changing its registered address if another interface is added later.
+server: https://192.168.1.120:6443
+token-file: /etc/rancher/k3s/token
+node-ip: 192.168.1.117

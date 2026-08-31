@@ -1,0 +1,15 @@
+services:
+  vault:
+    image: hashicorp/vault:1.19.4
+    container_name: vault
+    restart: unless-stopped
+    ports:
+      - "8200:8200"
+      - "8201:8201"
+    volumes:
+      - /home/sf135/apps/vault/config:/vault/config
+      - /home/sf135/apps/vault/data:/vault/data
+      - /home/sf135/apps/vault/logs:/vault/logs
+    command: server
+    environment:
+      - VAULT_ADDR=http://127.0.0.1:8200

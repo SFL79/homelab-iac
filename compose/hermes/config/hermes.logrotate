@@ -1,0 +1,10 @@
+/home/sf135/apps/hermes_agent/data/logs/*.log {
+    daily
+    maxsize 25M
+    rotate 7
+    compress
+    delaycompress
+    copytruncate
+    missingok
+    notifempty
+}

@@ -1,0 +1,54 @@
+port = "8080"
+bind_address = "0.0.0.0"
+log_level = 2
+list_output = "table"
+stateless = true
+kubeconfig = "/etc/kubernetes-mcp/kubeconfig"
+cluster_provider_strategy = "kubeconfig"
+
+read_only = true
+disable_destructive = true
+confirmation_fallback = "deny"
+toolsets = ["core"]
+enabled_tools = [
+  "events_list",
+  "namespaces_list",
+  "pods_get",
+  "pods_list",
+  "pods_list_in_namespace",
+  "pods_log",
+  "resources_get",
+  "resources_list",
+]
+
+[[denied_resources]]
+group = ""
+version = "v1"
+kind = "Secret"
+
+[[denied_resources]]
+group = "rbac.authorization.k8s.io"
+version = "v1"
+kind = "Role"
+
+[[denied_resources]]
+group = "rbac.authorization.k8s.io"
+version = "v1"
+kind = "RoleBinding"
+
+[[denied_resources]]
+group = "rbac.authorization.k8s.io"
+version = "v1"
+kind = "ClusterRole"
+
+[[denied_resources]]
+group = "rbac.authorization.k8s.io"
+version = "v1"
+kind = "ClusterRoleBinding"
+
+server_instructions = """
+Use this endpoint only for evidence-first diagnosis of the SFL homelab k3s
+cluster. It is strictly read-only. Never request Secrets or attempt create,
+update, patch, delete, exec, attach, or port-forward operations. Durable fixes
+belong in homelab-iac and are applied only by Argo CD after owner review.
+"""

@@ -1,0 +1,7 @@
+# /etc/rancher/k3s/config.yaml on sf-optiplex7000
+# Source of truth: homelab-iac/nodes/sf-optiplex7000/k3s-config.yaml
+# Apply: sudo install -m 0644 -D <this file> /etc/rancher/k3s/config.yaml && sudo systemctl restart k3s
+
+# Ethernet-only host (enp0s31f6, 192.168.1.120). Cluster bootstrap node.
+# Pinning is defensive, in case a future change adds another interface.
+node-ip: 192.168.1.120

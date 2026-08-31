@@ -1,0 +1,29 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: argocd-ingress
+  namespace: argocd
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/name: Argo CD
+    gethomepage.dev/description: GitOps deployment controller
+    gethomepage.dev/group: Operations
+    gethomepage.dev/icon: argo-cd.png
+    gethomepage.dev/href: http://argocd.sfl
+    gethomepage.dev/siteMonitor: http://argocd.sfl
+    gethomepage.dev/external: "true"
+    gethomepage.dev/weight: "30"
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: argocd.sfl
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: argocd-server
+                port:
+                  number: 80

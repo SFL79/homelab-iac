@@ -1,0 +1,29 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: longhorn-ingress
+  namespace: longhorn-system
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/name: Longhorn
+    gethomepage.dev/description: Distributed storage management
+    gethomepage.dev/group: Operations
+    gethomepage.dev/icon: longhorn.png
+    gethomepage.dev/href: http://longhorn.sfl
+    gethomepage.dev/siteMonitor: http://longhorn.sfl
+    gethomepage.dev/external: "true"
+    gethomepage.dev/weight: "40"
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: longhorn.sfl
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: longhorn-frontend
+                port:
+                  number: 80

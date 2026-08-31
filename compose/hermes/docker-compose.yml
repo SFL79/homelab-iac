@@ -1,0 +1,125 @@
+name: hermes-agent
+
+services:
+  vault-agent:
+    image: hashicorp/vault@sha256:b5f675b0bf681568cd7354c697fe4ce953024312d6d23ee7216deda60c192bad
+    container_name: hermes-vault-agent
+    user: "1000:1000"
+    entrypoint: ["/bin/vault"]
+    command: ["agent", "-config=/vault/config/agent.hcl"]
+    environment:
+      VAULT_ADDR: http://192.168.1.120:8200
+    volumes:
+      - ./config/vault-agent.hcl:/vault/config/agent.hcl:ro
+      - ./config/hermes.env.ctmpl:/vault/config/hermes.env.ctmpl:ro
+      - /home/sf135/apps/hermes_agent/secrets/vault-role-id:/vault/auth/role-id:ro
+      - /home/sf135/apps/hermes_agent/secrets/vault-secret-id:/vault/auth/secret-id:ro
+      - hermes-runtime:/run/hermes
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=16m
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "test -s /run/hermes/hermes.env"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+    networks: [hermes-private, hermes-egress]
+    logging:
+      driver: json-file
+      options: {max-size: "25m", max-file: "7"}
+
+  kubernetes-mcp:
+    image: ghcr.io/containers/kubernetes-mcp-server@sha256:5df586e2c7ced2a3125f6e78923388d80b69de0a2ad1470325b05318f12725bd
+    container_name: hermes-kubernetes-mcp
+    user: "1000:1000"
+    command:
+      - --config
+      - /etc/kubernetes-mcp/config.toml
+      - --kubeconfig
+      - /etc/kubernetes-mcp/kubeconfig
+      - --cluster-provider
+      - kubeconfig
+    expose: ["8080"]
+    volumes:
+      - ./config/kubernetes-mcp.toml:/etc/kubernetes-mcp/config.toml:ro
+      - /home/sf135/apps/hermes_agent/secrets/kubeconfig:/etc/kubernetes-mcp/kubeconfig:ro
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=16m
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    restart: unless-stopped
+    mem_limit: 256m
+    cpus: 0.50
+    pids_limit: 128
+    networks: [hermes-private, hermes-egress]
+    logging:
+      driver: json-file
+      options: {max-size: "25m", max-file: "7"}
+
+  hermes:
+    image: nousresearch/hermes-agent:v2026.8.27@sha256:5f23552e16589d291099cd8041233e6200197d225e4b28b22a0463e732d4b843
+    container_name: hermes-agent
+    user: "10000:10000"
+    group_add: ["1000"]
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -a
+        . /run/hermes/hermes.env
+        set +a
+        exec hermes gateway run --no-supervise --external-supervisor
+    environment:
+      HERMES_HOME: /opt/data
+      HERMES_WRITE_SAFE_ROOT: /opt/data
+      MESSAGING_CWD: /opt/data/workspace/homelab-iac
+      GIT_SSH_COMMAND: ssh -i /run/secrets/gitea-readonly-key -o IdentitiesOnly=yes -o UserKnownHostsFile=/run/secrets/gitea-known-hosts -o StrictHostKeyChecking=yes
+      PYTHONUNBUFFERED: "1"
+    ports:
+      - "192.168.1.118:8642:8642"
+    volumes:
+      - /home/sf135/apps/hermes_agent/data:/opt/data
+      - /home/sf135/apps/hermes_agent/secrets/gitea-readonly-key:/run/secrets/gitea-readonly-key:ro
+      - /home/sf135/apps/hermes_agent/secrets/gitea-known-hosts:/run/secrets/gitea-known-hosts:ro
+      - hermes-runtime:/run/hermes:ro
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,size=256m
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    restart: unless-stopped
+    stop_grace_period: 60s
+    mem_limit: 4g
+    cpus: 2.0
+    pids_limit: 512
+    depends_on:
+      vault-agent:
+        condition: service_healthy
+      kubernetes-mcp:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8642/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks: [hermes-private, hermes-egress]
+    logging:
+      driver: json-file
+      options: {max-size: "25m", max-file: "7"}
+
+volumes:
+  hermes-runtime:
+    driver: local
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
+      o: uid=1000,gid=1000,mode=0770,size=16m
+
+networks:
+  hermes-private:
+    internal: true
+  hermes-egress:

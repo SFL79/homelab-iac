@@ -1,0 +1,61 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: netdata
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  finalizers:
+    - resources-finalizer.argocd.io
+spec:
+  project: default
+  source:
+    repoURL: https://netdata.github.io/helmchart
+    chart: netdata
+    targetRevision: 3.7.165
+    helm:
+      releaseName: netdata
+      valuesObject:
+        parent:
+          enabled: false
+
+        child:
+          enabled: true
+          port: 19998
+
+          env:
+            DO_NOT_TRACK: "1"
+
+          configs:
+            netdata:
+              enabled: false
+            stream:
+              enabled: false
+
+          extraVolumes:
+            - name: stream-secret
+              secret:
+                secretName: netdata-streaming
+            - name: netdata-conf
+              configMap:
+                name: netdata-conf-override
+
+          extraVolumeMounts:
+            - name: stream-secret
+              mountPath: /etc/netdata/stream.conf
+              subPath: stream.conf
+              readOnly: true
+            - name: netdata-conf
+              mountPath: /etc/netdata/netdata.conf
+              subPath: netdata.conf
+              readOnly: true
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: netdata
+  syncPolicy:
+    automated:
+      prune: false
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

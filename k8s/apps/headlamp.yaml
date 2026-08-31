@@ -1,0 +1,69 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: headlamp
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  finalizers:
+    - resources-finalizer.argocd.io
+spec:
+  project: default
+  source:
+    repoURL: https://kubernetes-sigs.github.io/headlamp/
+    chart: headlamp
+    targetRevision: "0.42.0"
+    helm:
+      releaseName: headlamp
+      valuesObject:
+        # Ingress is handled by a Traefik IngressRoute in the headlamp-config app.
+        ingress:
+          enabled: false
+
+        # The chart's defaults create a ServiceAccount `headlamp` and a
+        # ClusterRoleBinding `headlamp-admin` -> cluster-admin.
+        # cluster-admin is intentional: this is the owner's single-user,
+        # network-gated (.sfl / tailnet) management console. To scope down to
+        # read-only later, set `clusterRoleBinding.clusterRoleName: view`.
+
+        # Auto-login: instead of in-cluster mode (which prompts for a pasted SA
+        # token), Headlamp is pointed at a static kubeconfig that reads the
+        # mounted SA token via `tokenFile`. Opening headlamp.sfl logs straight in
+        # as the headlamp SA with no token prompt. The kubeconfig ConfigMap
+        # (headlamp-kubeconfig) lives in the headlamp-config app under
+        # k8s/platform/headlamp/. Released chart 0.42.0 has no native flag for
+        # this; chart >= 0.43.0 adds config.unsafeUseServiceAccountToken: true,
+        # which should replace this kubeconfig + extraArgs once the chart is bumped.
+        config:
+          inCluster: false
+          extraArgs:
+            - "-kubeconfig=/headlamp-kubeconfig/config"
+
+        volumeMounts:
+          - name: kubeconfig
+            mountPath: /headlamp-kubeconfig
+            readOnly: true
+        volumes:
+          - name: kubeconfig
+            configMap:
+              name: headlamp-kubeconfig
+
+        replicaCount: 1
+
+        resources:
+          requests:
+            cpu: 50m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: headlamp
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

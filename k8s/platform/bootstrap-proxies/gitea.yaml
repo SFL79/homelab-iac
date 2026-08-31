@@ -1,0 +1,76 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: gitea
+  namespace: bootstrap-proxies
+spec:
+  ports:
+    - port: 3000
+      targetPort: 3000
+      protocol: TCP
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: gitea
+  namespace: bootstrap-proxies
+  labels:
+    kubernetes.io/service-name: gitea
+addressType: IPv4
+endpoints:
+  - addresses:
+      - 192.168.1.120
+ports:
+  - port: 3000
+    protocol: TCP
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: gitea
+  namespace: bootstrap-proxies
+  annotations:
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/name: Gitea
+    gethomepage.dev/description: Homelab Git and container registry
+    gethomepage.dev/group: Platform
+    gethomepage.dev/icon: gitea.png
+    gethomepage.dev/href: http://gitea.sfl
+    gethomepage.dev/siteMonitor: http://gitea.sfl
+    gethomepage.dev/external: "true"
+    gethomepage.dev/weight: "10"
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`gitea.sfl`)
+      kind: Rule
+      services:
+        - name: gitea
+          port: 3000
+---
+# HTTPS route with Traefik's default self-signed cert. Required for
+# `docker push gitea.sfl/...` to work: Docker tries HTTPS first and only
+# falls back to HTTP if HTTPS fails at the transport layer. Without this
+# route, Traefik answered :443 with its default cert and a 404 (no match),
+# which Docker treated as a real registry response and gave up.
+# Clients (docker daemon, k3s containerd) must accept the bad cert, which
+# the homelab-iac insecure-registries config already does.
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: gitea-tls
+  namespace: bootstrap-proxies
+  annotations:
+    # Registry-only duplicate of the primary Gitea route.
+    gethomepage.dev/enabled: "false"
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`gitea.sfl`)
+      kind: Rule
+      services:
+        - name: gitea
+          port: 3000
+  tls: {}

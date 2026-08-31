@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sonarr
+  namespace: media-stack
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sonarr
+  template:
+    metadata:
+      labels:
+        app: sonarr
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: sf-y530
+      containers:
+        - name: sonarr
+          image: lscr.io/linuxserver/sonarr:latest
+          env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+            - name: TZ
+              value: Asia/Jerusalem
+          ports:
+            - containerPort: 8989
+          volumeMounts:
+            - name: media-base
+              mountPath: /config
+              subPath: sonarr-config
+            - name: media-base
+              mountPath: /data
+      volumes:
+        - name: media-base
+          persistentVolumeClaim:
+            claimName: media-base
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sonarr
+  namespace: media-stack
+spec:
+  selector:
+    app: sonarr
+  ports:
+    - port: 8989
+      targetPort: 8989
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: sonarr
+  namespace: media-stack
+  annotations:
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/name: Sonarr
+    gethomepage.dev/description: TV series automation
+    gethomepage.dev/group: Media
+    gethomepage.dev/icon: sonarr.png
+    gethomepage.dev/href: http://sonarr.sfl
+    gethomepage.dev/siteMonitor: http://sonarr.sfl
+    gethomepage.dev/external: "true"
+    gethomepage.dev/weight: "20"
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`sonarr.sfl`)
+      kind: Rule
+      services:
+        - name: sonarr
+          port: 8989

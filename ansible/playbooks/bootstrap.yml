@@ -1,0 +1,23 @@
+---
+- name: Manage one bootstrap Compose service
+  hosts: "{{ target_service | default('invalid-bootstrap-service') }}"
+  gather_facts: false
+  serial: 1
+  any_errors_fatal: true
+  pre_tasks:
+    - name: Validate the requested service and action
+      ansible.builtin.assert:
+        that:
+          - target_service is defined
+          - target_service in bootstrap_allowed_services
+          - bootstrap_action is defined
+          - bootstrap_action in bootstrap_allowed_actions
+          - inventory_hostname == bootstrap_services[target_service].inventory_host
+        fail_msg: A named, allowlisted bootstrap service and action are required.
+
+    - name: Select the requested service definition
+      ansible.builtin.set_fact:
+        bootstrap_service: "{{ bootstrap_services[target_service] }}"
+
+  roles:
+    - role: bootstrap_compose

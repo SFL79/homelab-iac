@@ -1,0 +1,111 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+readonly RUNNER_ROOT="/home/sf135/apps/homelab-ansible"
+readonly REPO_ROOT="${RUNNER_ROOT}/repo"
+readonly ANSIBLE_ROOT="${REPO_ROOT}/ansible"
+readonly VENV_ROOT="${RUNNER_ROOT}/venv"
+readonly REVISION_ROOT="${RUNNER_ROOT}/revisions"
+readonly INVENTORY="${ANSIBLE_ROOT}/inventory/hosts.yml"
+readonly PLAYBOOK="${ANSIBLE_ROOT}/playbooks/bootstrap.yml"
+readonly SERVICES="gitea vault adguard netdata hermes"
+
+usage() {
+  printf '%s\n' \
+    'usage:' \
+    '  bootstrapctl status <service>' \
+    '  bootstrapctl audit <service>' \
+    '  bootstrapctl plan <service> --revision <40-char-sha> [--offline]' \
+    '  bootstrapctl deploy <service> --revision <40-char-sha> [--offline]' \
+    '  bootstrapctl rollback <service> --revision <40-char-sha> [--offline]'
+}
+
+die() {
+  printf 'bootstrapctl: %s\n' "$*" >&2
+  exit 2
+}
+
+is_allowed_service() {
+  case " $SERVICES " in
+    *" $1 "*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+[[ $# -ge 2 ]] || { usage; exit 2; }
+action="$1"
+service="$2"
+shift 2
+is_allowed_service "$service" || die "unsupported service: $service"
+case "$action" in status|audit|plan|deploy|rollback) ;; *) die "unsupported action: $action" ;; esac
+
+revision=""
+offline=false
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --revision)
+      [[ $# -ge 2 ]] || die '--revision requires a value'
+      revision="$2"
+      shift 2
+      ;;
+    --offline)
+      offline=true
+      shift
+      ;;
+    *) die "unexpected argument: $1" ;;
+  esac
+done
+
+cd "$ANSIBLE_ROOT"
+if [[ "$action" == status || "$action" == audit ]]; then
+  [[ -z "$revision" ]] || die "$action does not accept --revision"
+  [[ "$offline" == false ]] || die "$action does not accept --offline"
+  exec "$VENV_ROOT/bin/ansible-playbook" -i "$INVENTORY" "$PLAYBOOK" \
+    -e "target_service=$service" -e "bootstrap_action=$action"
+fi
+
+[[ "$revision" =~ ^[0-9a-f]{40}$ ]] || die 'a full lowercase 40-character SHA is required'
+if [[ "$offline" == true && "$service" != gitea && "$service" != vault ]]; then
+  die 'offline recovery is allowed only for Gitea and Vault'
+fi
+
+revision_dir="${REVISION_ROOT}/${revision}"
+if [[ "$action" == deploy || "$action" == rollback ]]; then
+  [[ -f "${revision_dir}/.git" ]] || die 'revision is not cached; run plan first'
+fi
+if [[ "$offline" == true ]]; then
+  [[ -f "${revision_dir}/.git" ]] \
+    || die 'offline recovery requires a revision cached by an earlier online plan'
+fi
+
+if [[ "$offline" == false ]]; then
+  git -C "$REPO_ROOT" fetch --quiet origin main
+  git -C "$REPO_ROOT" merge --ff-only --quiet refs/remotes/origin/main
+  git -C "$REPO_ROOT" merge-base --is-ancestor "$revision" refs/remotes/origin/main \
+    || die 'revision is not pushed to origin/main'
+else
+  git -C "$REPO_ROOT" cat-file -e "${revision}^{commit}" 2>/dev/null \
+    || die 'offline revision is not cached in the runner repository'
+fi
+
+if [[ ! -f "${revision_dir}/.git" ]]; then
+  mkdir -p "$REVISION_ROOT"
+  git -C "$REPO_ROOT" worktree add --quiet --detach "$revision_dir" "$revision"
+fi
+[[ "$(git -C "$revision_dir" rev-parse HEAD)" == "$revision" ]] \
+  || die 'cached worktree does not match requested revision'
+[[ -z "$(git -C "$revision_dir" status --porcelain --untracked-files=all)" ]] \
+  || die 'cached revision worktree has local modifications'
+
+common_args=(
+  -i "$INVENTORY"
+  "$PLAYBOOK"
+  -e "target_service=$service"
+  -e "bootstrap_action=$action"
+  -e "source_root=$revision_dir"
+  -e "source_revision=$revision"
+)
+if [[ "$action" == plan ]]; then
+  exec "$VENV_ROOT/bin/ansible-playbook" "${common_args[@]}" --check --diff
+fi
+exec "$VENV_ROOT/bin/ansible-playbook" "${common_args[@]}"

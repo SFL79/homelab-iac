@@ -1,0 +1,22 @@
+---
+- name: Validate source revision inputs
+  ansible.builtin.assert:
+    that:
+      - source_root is defined
+      - source_revision is defined
+      - source_revision is regex('^[0-9a-f]{40}$')
+    fail_msg: A materialized, full 40-character Git revision is required.
+
+- name: Validate desired Compose configuration on the target host
+  ansible.builtin.command:
+    argv:
+      - docker
+      - compose
+      - --file
+      - '-'
+      - config
+      - --quiet
+    stdin: "{{ lookup('ansible.builtin.file', source_root + '/' + bootstrap_service.compose_source) }}"
+  environment: "{{ bootstrap_service.compose_environment }}"
+  changed_when: false
+  check_mode: false

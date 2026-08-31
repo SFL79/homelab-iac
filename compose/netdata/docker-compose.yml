@@ -1,0 +1,33 @@
+version: "3.8"
+
+services:
+  netdata:
+    image: netdata/netdata:v2.10.3
+    container_name: netdata-parent
+    hostname: ${NODE_HOSTNAME}
+    ports:
+      - "19999:19999"
+    restart: unless-stopped
+    cap_add:
+      - SYS_PTRACE
+      - SYS_ADMIN
+    security_opt:
+      - apparmor:unconfined
+    volumes:
+      - ./stream.conf:/etc/netdata/stream.conf:ro
+      - netdataconfig:/etc/netdata
+      - netdatalib:/var/lib/netdata
+      - netdatacache:/var/cache/netdata
+      - /etc/passwd:/host/etc/passwd:ro
+      - /etc/group:/host/etc/group:ro
+      - /etc/os-release:/host/etc/os-release:ro
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - DO_NOT_TRACK=1
+
+volumes:
+  netdataconfig:
+  netdatalib:
+  netdatacache:
